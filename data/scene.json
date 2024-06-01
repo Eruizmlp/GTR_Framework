@@ -31,6 +31,30 @@
 			"filename":	"prefabs/road/road.gltf"
 		}, {
 			"type":	"PREFAB",
+			"name":	"floor4",
+			"layers":	3,
+			"position":	[0, 0, -600],
+			"scale":	[10, 10, 10],
+			"rotation":	[0, 0, 0, 1],
+			"filename":	"prefabs/road/road.gltf"
+		}, {
+			"type":	"PREFAB",
+			"name":	"floor5",
+			"layers":	3,
+			"position":	[0, 0, 600],
+			"scale":	[10, 10, 10],
+			"rotation":	[0, 0, 0, 1],
+			"filename":	"prefabs/road/road.gltf"
+		}, {
+			"type":	"PREFAB",
+			"name":	"floor6",
+			"layers":	3,
+			"position":	[0, 0, 900],
+			"scale":	[10, 10, 10],
+			"rotation":	[0, 0, 0, 1],
+			"filename":	"prefabs/road/road.gltf"
+		}, {
+			"type":	"PREFAB",
 			"name":	"car1",
 			"layers":	3,
 			"position":	[-80, 0, -100],
@@ -117,7 +141,46 @@
 			"type":	"LIGHT",
 			"name":	"pointlight2",
 			"layers":	3,
-			"position":	[-131, 38, -205],
+			"position":	[-131, 50, -305],
+			"scale":	[1, 1, 1],
+			"rotation":	[0, 0, 0, 1],
+			"color":	[1, 0.20000000298023224, 0.10000000149011612],
+			"intensity":	2.5,
+			"max_dist":	70,
+			"cast_shadows":	false,
+			"near_dist":	0.10000000149011612,
+			"light_type":	"POINT"
+		}, {
+			"type":	"LIGHT",
+			"name":	"pointlight3",
+			"layers":	3,
+			"position":	[-131, 38, -605],
+			"scale":	[1, 1, 1],
+			"rotation":	[0, 0, 0, 1],
+			"color":	[1, 0.20000000298023224, 0.10000000149011612],
+			"intensity":	2.5,
+			"max_dist":	70,
+			"cast_shadows":	false,
+			"near_dist":	0.10000000149011612,
+			"light_type":	"POINT"
+		},  {
+			"type":	"LIGHT",
+			"name":	"pointlight4",
+			"layers":	3,
+			"position":	[-131, 80, -900],
+			"scale":	[1, 1, 1],
+			"rotation":	[0, 0, 0, 1],
+			"color":	[1, 0.20000000298023224, 0.10000000149011612],
+			"intensity":	2.5,
+			"max_dist":	70,
+			"cast_shadows":	false,
+			"near_dist":	0.10000000149011612,
+			"light_type":	"POINT"
+		}, {
+			"type":	"LIGHT",
+			"name":	"pointlight5",
+			"layers":	3,
+			"position":	[-50, 100, -730],
 			"scale":	[1, 1, 1],
 			"rotation":	[0, 0, 0, 1],
 			"color":	[1, 0.20000000298023224, 0.10000000149011612],

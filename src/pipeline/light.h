@@ -2,6 +2,8 @@
 
 #include "scene.h"
 
+#include "../GFX/fbo.h"
+
 namespace SCN {
 
 	enum eLightType : uint32 {
@@ -25,7 +27,13 @@ namespace SCN {
 		vec2 cone_info;
 		float area; //for direct;
 
-		ENTITY_METHODS(LightEntity, LIGHT, 14,4);
+
+		GFX::FBO* shadowmap_fbo;
+
+		mat4 shadowmap_viewprojection;
+
+
+		ENTITY_METHODS(LightEntity, LIGHT, 14, 4);
 
 		LightEntity();
 

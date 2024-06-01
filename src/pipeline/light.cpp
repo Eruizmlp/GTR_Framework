@@ -14,17 +14,18 @@ SCN::LightEntity::LightEntity()
 	shadow_bias = 0.001;
 	near_distance = 0.1;
 	area = 1000;
+	shadowmap_fbo = nullptr;
 }
 
 void SCN::LightEntity::configure(cJSON* json)
 {
-	color = readJSONVector3(json, "color", color );
+	color = readJSONVector3(json, "color", color);
 	intensity = readJSONNumber(json, "intensity", intensity);
 	max_distance = readJSONNumber(json, "max_dist", max_distance);
 	cast_shadows = readJSONBool(json, "cast_shadows", cast_shadows);
 
-	cone_info.x = readJSONNumber(json, "cone_start", cone_info.x );
-	cone_info.y = readJSONNumber(json, "cone_end", cone_info.y );
+	cone_info.x = readJSONNumber(json, "cone_start", cone_info.x);
+	cone_info.y = readJSONNumber(json, "cone_end", cone_info.y);
 	area = readJSONNumber(json, "area", area);
 	near_distance = readJSONNumber(json, "near_dist", near_distance);
 
