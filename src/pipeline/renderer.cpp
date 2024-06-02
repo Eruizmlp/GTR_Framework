@@ -26,8 +26,11 @@ GFX::Mesh sphere;
 GFX::Mesh cube;
 GFX::FBO* gbuffers = nullptr;
 GFX::FBO* ssao_fbo = nullptr;
+GFX::FBO* blur_fbo1 = nullptr;
+GFX::FBO* blur_fbo2 = nullptr;
 GFX::FBO* illumination_fbo = nullptr;
 GFX::FBO* irradiance_fbo = nullptr;
+GFX::FBO* tonemapping_fbo = nullptr;
 std::vector<Vector3f> random_points;
 
 
@@ -118,7 +121,7 @@ void Renderer::renderSceneDeferred(SCN::Scene* scene, Camera* camera)
 	if (!ssao_fbo)
 	{
 		ssao_fbo = new GFX::FBO();
-		ssao_fbo->create(size.x, size.y, 1, GL_RGB, GL_UNSIGNED_BYTE, false);
+		ssao_fbo->create(size.x/2, size.y/2, 1, GL_RGB, GL_UNSIGNED_BYTE, false);
 		ssao_fbo->color_textures[0]->setName("SSAO");
 	}
 
@@ -128,24 +131,67 @@ void Renderer::renderSceneDeferred(SCN::Scene* scene, Camera* camera)
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_BLEND);
 
-
-
 	GFX::Shader* ssao_shader = GFX::Shader::Get("ssao");
 	assert(ssao_shader);
 	ssao_shader->enable();
 	ssao_shader->setUniform("u_depth_texture", gbuffers->depth_texture, 0);
 	ssao_shader->setUniform("u_normal_texture", gbuffers->color_textures[1], 1);
-	ssao_shader->setUniform("u_iRes", vec2(1.0 / size.x, 1.0 / size.y));
+	ssao_shader->setUniform("u_iRes", vec2(1.0 / size.x*2, 1.0 / size.y*2));
 	ssao_shader->setUniform("u_inverse_viewprojection", camera->inverse_viewprojection_matrix);
 	ssao_shader->setUniform("u_viewprojection", camera->viewprojection_matrix);
 	ssao_shader->setUniform("u_radius", ssao_radius);
 	ssao_shader->setUniform("u_ssao_max_distance", ssao_max_distance);
 	ssao_shader->setUniform3Array("u_random_points", (float*)&random_points[0], random_points.size());
+	ssao_shader->setUniform("near", camera->near_plane); 
+	ssao_shader->setUniform("far", camera->far_plane);  
 
 	quad->render(GL_TRIANGLES);
 
 	ssao_fbo->unbind();
 
+	// First Blur Pass (Horizontal)
+	if (!blur_fbo1)
+	{
+		blur_fbo1 = new GFX::FBO();
+		blur_fbo1->create(size.x, size.y, 1, GL_RGB, GL_UNSIGNED_BYTE, false);
+	}
+
+	blur_fbo1->bind();
+	glClear(GL_COLOR_BUFFER_BIT);
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_BLEND);
+
+	GFX::Shader* blur_h_shader = GFX::Shader::Get("blur_h");
+	assert(blur_h_shader);
+	blur_h_shader->enable();
+	blur_h_shader->setUniform("u_ssao_texture", ssao_fbo->color_textures[0], 0);
+	blur_h_shader->setUniform("u_iRes", vec2(1.0 / size.x*2, 1.0 / size.y*2));
+
+	quad->render(GL_TRIANGLES);
+
+	blur_fbo1->unbind();
+
+	// Second Blur Pass (Vertical)
+	if (!blur_fbo2)
+	{
+		blur_fbo2 = new GFX::FBO();
+		blur_fbo2->create(size.x, size.y, 1, GL_RGB, GL_UNSIGNED_BYTE, false);
+	}
+
+	blur_fbo2->bind();
+	glClear(GL_COLOR_BUFFER_BIT);
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_BLEND);
+
+	GFX::Shader* blur_v_shader = GFX::Shader::Get("blur_v");
+	assert(blur_v_shader);
+	blur_v_shader->enable();
+	blur_v_shader->setUniform("u_ssao_texture", blur_fbo1->color_textures[0], 0);
+	blur_v_shader->setUniform("u_iRes", vec2(1.0 / size.x*2, 1.0 / size.y*2));
+
+	quad->render(GL_TRIANGLES);
+
+	blur_fbo2->unbind();
 
 	// Illumination pass
 
@@ -172,6 +218,7 @@ void Renderer::renderSceneDeferred(SCN::Scene* scene, Camera* camera)
 	deferred_global->setUniform("u_normal_texture", gbuffers->color_textures[1], 1);
 	deferred_global->setUniform("u_emissive_texture", gbuffers->color_textures[2], 2);
 	deferred_global->setUniform("u_depth_texture", gbuffers->depth_texture, 3);
+	deferred_global->setUniform("u_ssao_texture", blur_fbo2->color_textures[0], 4);  
 
 	deferred_global->setUniform("u_ambient_light", scene->ambient_light);
 	deferred_global->setUniform("u_iRes", vec2( 1.0 / size.x, 1.0 / size.y));
@@ -183,6 +230,8 @@ void Renderer::renderSceneDeferred(SCN::Scene* scene, Camera* camera)
 	glDepthFunc(GL_ALWAYS);
 	glDisable(GL_BLEND);
 
+
+	//TODO: SPHERE RENDERING FOR POINT AND SPOT LIGHTS.
 	for (auto light : lights)
 	{
 		LightToShader(light, deferred_global);
@@ -195,6 +244,7 @@ void Renderer::renderSceneDeferred(SCN::Scene* scene, Camera* camera)
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_ONE, GL_ONE);
+
 	//Forward for alpha
 	for (auto re : transparentRenderables)
 		if (camera->testBoxInFrustum(re.boundingbox.center, re.boundingbox.halfsize))
@@ -208,6 +258,27 @@ void Renderer::renderSceneDeferred(SCN::Scene* scene, Camera* camera)
 
 	illumination_fbo->unbind();
 
+	// Tonemapping Pass and gamma correction 
+	if (!tonemapping_fbo)
+	{
+		tonemapping_fbo = new GFX::FBO();
+		tonemapping_fbo->create(size.x, size.y, 1, GL_RGBA, GL_UNSIGNED_BYTE, false);
+	}
+
+	tonemapping_fbo->bind();
+	glClear(GL_COLOR_BUFFER_BIT);
+
+	GFX::Shader* tonemapping_shader = GFX::Shader::Get("tonemapping");
+	assert(tonemapping_shader);
+	tonemapping_shader->enable();
+	tonemapping_shader->setUniform("u_hdr_texture", illumination_fbo->color_textures[0], 0);
+
+	quad->render(GL_TRIANGLES);
+
+	tonemapping_fbo->unbind();
+
+	//illumination_fbo->color_textures[0]->toViewport();
+	tonemapping_fbo->color_textures[0]->toViewport();
 	
 	if (view_gbuffers != eShowGbuffers::NONE)
 	{
@@ -227,12 +298,9 @@ void Renderer::renderSceneDeferred(SCN::Scene* scene, Camera* camera)
 			gbuffers->color_textures[3]->toViewport();
 	}
 
-	if(showSSAO)
-		ssao_fbo->color_textures[0]->toViewport();
-
-
-	illumination_fbo->color_textures[0]->toViewport();
-
+	if (showSSAO)
+		//ssao_fbo->color_textures[0]->toViewport();
+		blur_fbo2->color_textures[0]->toViewport();
 }
 
 
